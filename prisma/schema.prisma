@@ -1,0 +1,72 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+/*
+  We keep Clerk as the source-of-truth for authentication.
+  In our DB we’ll store a reference to the Clerk user (their `id`),
+  plus whatever extra fields we need on top (role, account ownership…).
+*/
+
+enum Role {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+/* ─────────── User ─────────── */
+model User {
+  id        String   @id @default(cuid())          // internal ID
+  clerkId   String   @unique                       // Clerk user ID
+  email     String?  @unique
+  name      String?
+  imageUrl  String?
+  createdAt DateTime @default(now())
+
+  agencies  AgencyMember[]
+}
+
+/* ─────────── Agency (top-level account) ─────────── */
+model Agency {
+  id        String   @id @default(cuid())
+  name      String
+  ownerId   String                                     // points to User (Owner)
+  createdAt DateTime @default(now())
+
+  members   AgencyMember[]
+  projects  SubAccount[]                               // websites / funnels etc.
+
+  @@index([ownerId])
+}
+
+/* ─────────── Join table for many-to-many User↔Agency with role ─────────── */
+model AgencyMember {
+  id        String  @id @default(cuid())
+  userId    String
+  agencyId  String
+  role      Role    @default(MEMBER)
+
+  user      User    @relation(fields: [userId],   references: [id])
+  agency    Agency  @relation(fields: [agencyId], references: [id])
+
+  @@unique([userId, agencyId])                        // one membership per pair
+}
+
+/* ─────────── Sub-account / Website / Funnel ─────────── */
+model SubAccount {
+  id        String   @id @default(cuid())
+  agencyId  String
+  name      String
+  createdAt DateTime @default(now())
+
+  agency    Agency   @relation(fields: [agencyId], references: [id])
+
+  @@index([agencyId])
+}
