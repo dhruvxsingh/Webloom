@@ -67,6 +67,22 @@ model SubAccount {
   createdAt DateTime @default(now())
 
   agency    Agency   @relation(fields: [agencyId], references: [id])
-
+  pages     Page[]   
   @@index([agencyId])
+}
+
+model Page {
+  id        String   @id @default(cuid())
+  projectId String
+  name      String   @default("Home")
+  path      String   @default("/")
+  content   Json?    // Stores the page structure as JSON
+  published Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project   SubAccount @relation(fields: [projectId], references: [id])
+
+  @@index([projectId])
+  @@unique([projectId, path])
 }
